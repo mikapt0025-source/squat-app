@@ -1,0 +1,864 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <title>スクワット達成アプリ</title>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js" crossorigin="anonymous"></script>
+    <style>
+        * { box-sizing: border-box; }
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: #000;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+
+        #canvas-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        video { display: none; }
+        canvas {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .header-badge {
+            position: absolute;
+            top: env(safe-area-inset-top, 16px);
+            left: 16px;
+            z-index: 10;
+            background: rgba(0, 0, 0, 0.65);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            color: #fff;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: bold;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            pointer-events: none;
+        }
+
+        .score-badge {
+            position: absolute;
+            top: calc(env(safe-area-inset-top, 16px) + 48px);
+            left: 16px;
+            z-index: 10;
+            background: rgba(0, 0, 0, 0.65);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            color: #ffd700;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 15px;
+            font-weight: bold;
+            border: 1px solid rgba(255, 215, 0, 0.4);
+            pointer-events: none;
+        }
+
+        .switch-btn {
+            position: absolute;
+            top: env(safe-area-inset-top, 16px);
+            right: 16px;
+            z-index: 20;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            color: #fff;
+            padding: 10px 18px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: bold;
+            border: 1px solid rgba(255, 255, 255, 0.35);
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+        }
+
+        .bottom-panel {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            z-index: 10;
+            padding: 20px 20px calc(20px + env(safe-area-inset-bottom, 0px));
+            background: linear-gradient(to top, rgba(0, 0, 0, 0.9) 0%, rgba(0, 0, 0, 0.5) 75%, transparent 100%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+        }
+
+        .count-box {
+            font-size: 56px;
+            line-height: 1;
+            color: #ff6b6b;
+            font-weight: 900;
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.8);
+            margin-bottom: 6px;
+        }
+        .count-box span {
+            color: #fff;
+            font-size: 28px;
+            font-weight: bold;
+            margin-left: 4px;
+        }
+
+        .status {
+            font-size: 16px;
+            color: #eee;
+            font-weight: 600;
+            text-shadow: 0 2px 6px rgba(0, 0, 0, 0.9);
+            min-height: 24px;
+            max-width: 90%;
+            margin-bottom: 6px;
+        }
+
+        .modal-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 100;
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .modal-card {
+            background: #ffffff;
+            color: #333;
+            border-radius: 24px;
+            padding: 28px 20px;
+            width: 100%;
+            max-width: 380px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        @keyframes popIn {
+            from { transform: scale(0.85); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+
+        .modal-card h2 { margin: 0 0 8px 0; font-size: 22px; color: #222; }
+        .modal-card p { margin: 0 0 16px 0; color: #666; font-size: 14px; line-height: 1.5; }
+
+        .name-input {
+            width: 100%;
+            padding: 14px 18px;
+            font-size: 17px;
+            border-radius: 12px;
+            border: 2px solid #ddd;
+            background: #f9f9f9;
+            color: #333;
+            text-align: center;
+            outline: none;
+            margin-bottom: 20px;
+        }
+        .name-input:focus { border-color: #4caf50; background: #fff; }
+
+        .btn-start {
+            width: 100%;
+            padding: 16px;
+            font-size: 18px;
+            font-weight: bold;
+            color: white;
+            background: linear-gradient(135deg, #4caf50 0%, #2e7d32 100%);
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(76, 175, 80, 0.4);
+        }
+        .btn-start:active { transform: scale(0.98); }
+
+        .btn-next-instant {
+            width: 100%;
+            padding: 14px;
+            font-size: 16px;
+            font-weight: bold;
+            color: #555;
+            background: #f0f2f5;
+            border: 1px solid #ddd;
+            border-radius: 12px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        .btn-next-instant:active { transform: scale(0.98); }
+
+        .complete-title {
+            font-size: 24px !important;
+            color: #e65100 !important;
+            font-weight: 900;
+        }
+        .complete-badge { font-size: 48px; margin-bottom: 4px; }
+
+        .status-pill {
+            display: inline-block;
+            background: #e8f5e9;
+            color: #2e7d32;
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+
+        /* でかスコア表示領域 */
+        .final-score-box {
+            margin: 12px 0 16px 0;
+            padding: 18px 12px;
+            background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%);
+            border-radius: 20px;
+            border: 2px solid #ffb74d;
+            box-shadow: inset 0 2px 4px rgba(255, 255, 255, 0.8), 0 4px 12px rgba(230, 81, 0, 0.15);
+        }
+        .final-score-title {
+            font-size: 15px;
+            font-weight: 800;
+            color: #e65100;
+            letter-spacing: 1px;
+            margin-bottom: 2px;
+        }
+        .final-score-number {
+            font-size: 72px;
+            font-weight: 900;
+            color: #d84315;
+            line-height: 1;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .final-score-unit {
+            font-size: 28px;
+            color: #e65100;
+            font-weight: bold;
+            margin-left: 2px;
+        }
+        .breakdown-box {
+            font-size: 13px;
+            color: #555;
+            text-align: left;
+            background: #ffffff;
+            padding: 10px 14px;
+            border-radius: 12px;
+            border: 1px solid #ffe0b2;
+            margin-top: 10px;
+            line-height: 1.6;
+        }
+    </style>
+</head>
+<body>
+
+<div class="header-badge">🏋️ スクワットチャレンジ</div>
+<div class="score-badge" id="score-badge">⭐ 平均スコア: -- 点</div>
+<button class="switch-btn" id="switch-btn" onclick="toggleCamera()">🔄 カメラ切替</button>
+
+<div id="canvas-container">
+    <video id="video" playsinline muted autoplay></video>
+    <canvas id="output_canvas"></canvas>
+</div>
+
+<div class="bottom-panel">
+    <div class="count-box"><span id="count" style="font-size: 56px; color: #ff6b6b; margin-left: 0;">0</span><span> / 10 回</span></div>
+    <div class="status" id="status">開始準備完了</div>
+</div>
+
+<!-- 1. 名前入力画面 -->
+<div id="start-modal" class="modal-overlay">
+    <div class="modal-card">
+        <div style="font-size: 48px; margin-bottom: 8px;">🏋️</div>
+        <h2>スクワットチャレンジ</h2>
+        <p>お名前を入力して「開始」を押すと<br>カメラが起動します。</p>
+        <input type="text" id="user-name" class="name-input" placeholder="氏名を入力してください">
+        <button class="btn-start" onclick="startApp()">開始する（カメラ起動）</button>
+    </div>
+</div>
+
+<!-- 2. 10回達成時の自動完了画面 -->
+<div id="complete-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-card">
+        <div class="complete-badge">🎉</div>
+        <h2 class="complete-title">10回達成！お疲れ様でした！</h2>
+        <div id="auto-status-pill" class="status-pill">✅ 記録完了！</div>
+        
+        <div id="summary-info-text"></div>
+
+        <p id="auto-guide-text" style="margin-bottom: 8px; font-size: 13px; color: #777;">まもなく次の人の入力画面へ移動します...</p>
+        <button class="btn-next-instant" onclick="nextUser()">👤 今すぐ次の人を入力</button>
+    </div>
+</div>
+
+<script>
+    // ★★★ 取得した専用Googleフォームの設定値 ★★★
+    const FORM_URL      = "https://docs.google.com/forms/d/e/1FAIpQLScTCuKIoE3i4oevh-S-6fRpfh-DQCkW-RDRytifNsWRaAZ-Kw/formResponse";
+    const ENTRY_NAME    = "entry.694385185";  // 1. 氏名
+    const ENTRY_SCORE   = "entry.18361761";   // 2. 点数
+    const ENTRY_DETAILS = "entry.122944283";  // 3. スコア詳細
+    
+    const TARGET_COUNT = 10;
+
+    // パラメータ設定
+    const SQUAT_DOWN_THRESHOLD = 120; // 膝屈曲角度 (度)
+    const SQUAT_UP_THRESHOLD = 160;   // 立ち上がり角度 (度)
+    const PARALLEL_MAX_DIFF = 15;     // 許容角度差 (度)
+    const ERROR_PENALTY_PTS = 5;      // ブー音1回につき何点減点するか
+
+    const videoElement = document.getElementById('video');
+    const canvasElement = document.getElementById('output_canvas');
+    const canvasCtx = canvasElement.getContext('2d');
+    const countElement = document.getElementById('count');
+    const statusElement = document.getElementById('status');
+    const scoreBadge = document.getElementById('score-badge');
+    const switchBtn = document.getElementById('switch-btn');
+    const userNameInput = document.getElementById('user-name');
+    const startModal = document.getElementById('start-modal');
+    const completeModal = document.getElementById('complete-modal');
+    const autoStatusPill = document.getElementById('auto-status-pill');
+    const summaryInfoText = document.getElementById('summary-info-text');
+
+    let count = 0;
+    let errorCount = 0;
+    let stage = "up";
+    let downConfirmationFrames = 0;
+    let hasFormViolation = false;
+    let facingMode = 'user';
+    let currentStream = null;
+    let isProcessing = false;
+    let cameraRunning = false;
+    let isCompleted = false;
+    let isSaved = false;
+    let currentUserName = "";
+    let lastProcessTime = 0;
+    let autoNextTimer = null;
+
+    // スコアリング変数
+    let repScores = [];
+    let currentRepMinDiff = 999;
+    let currentRepMinKneeAngle = 180;
+
+    // Web Audio API
+    let audioCtx = null;
+    function initAudio() {
+        if (!audioCtx) {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (audioCtx.state === 'suspended') {
+            audioCtx.resume();
+        }
+    }
+
+    function playSuccessSound() {
+        if (!audioCtx) return;
+        const now = audioCtx.currentTime;
+        const osc1 = audioCtx.createOscillator();
+        const gain1 = audioCtx.createGain();
+        osc1.type = 'sine';
+        osc1.frequency.setValueAtTime(880, now);
+        gain1.gain.setValueAtTime(0.3, now);
+        gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+        osc1.connect(gain1);
+        gain1.connect(audioCtx.destination);
+        osc1.start(now);
+        osc1.stop(now + 0.3);
+
+        const osc2 = audioCtx.createOscillator();
+        const gain2 = audioCtx.createGain();
+        osc2.type = 'sine';
+        osc2.frequency.setValueAtTime(659.25, now + 0.15);
+        gain2.gain.setValueAtTime(0.3, now + 0.15);
+        gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+        osc2.connect(gain2);
+        gain2.connect(audioCtx.destination);
+        osc2.start(now + 0.15);
+        osc2.stop(now + 0.5);
+    }
+
+    function playBuzzerSound() {
+        if (!audioCtx) return;
+        const now = audioCtx.currentTime;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(140, now);
+        gain.gain.setValueAtTime(0.35, now);
+        gain.gain.linearRampToValueAtTime(0.01, now + 0.35);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(now);
+        osc.stop(now + 0.35);
+    }
+
+    function playFanfareSound() {
+        if (!audioCtx) return;
+        const notes = [523.25, 659.25, 783.99, 1046.50];
+        notes.forEach((freq, idx) => {
+            const now = audioCtx.currentTime + idx * 0.12;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(freq, now);
+            gain.gain.setValueAtTime(0.3, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + (idx === 3 ? 0.6 : 0.25));
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start(now);
+            osc.stop(now + (idx === 3 ? 0.6 : 0.25));
+        });
+    }
+
+    window.onload = () => {
+        const savedName = localStorage.getItem('squat_saved_name');
+        if (savedName) {
+            userNameInput.value = savedName;
+        }
+    };
+
+    function startApp() {
+        const name = userNameInput.value.trim();
+        if (!name) {
+            alert("お名前を入力してください");
+            return;
+        }
+        initAudio();
+
+        currentUserName = name;
+        localStorage.setItem('squat_saved_name', name);
+
+        startModal.style.display = "none";
+        isCompleted = false;
+        isSaved = false;
+
+        resetSession();
+
+        if (!cameraRunning) {
+            startCamera();
+        }
+    }
+
+    function resetSession() {
+        count = 0;
+        errorCount = 0;
+        stage = "up";
+        downConfirmationFrames = 0;
+        hasFormViolation = false;
+        repScores = [];
+        currentRepMinDiff = 999;
+        currentRepMinKneeAngle = 180;
+        
+        countElement.innerText = "0";
+        scoreBadge.innerText = "⭐ 平均スコア: -- 点";
+        statusElement.innerText = `${currentUserName}さん: 全身を映してスクワットしてください`;
+        statusElement.style.color = "#eee";
+    }
+
+    function handleAutoCompletion() {
+        if (isSaved) return;
+        isSaved = true;
+        isCompleted = true;
+
+        playFanfareSound();
+
+        // 1. 基礎スコア（10回のフォーム平均点）
+        const baseAvgScore = repScores.length > 0 
+            ? Math.round(repScores.reduce((a, b) => a + b, 0) / repScores.length) 
+            : 0;
+
+        // 2. エラー減点（1ブーにつき -5点）
+        const totalPenalty = errorCount * ERROR_PENALTY_PTS;
+
+        // 3. 最終総合スコア
+        const finalScore = Math.max(0, baseAvgScore - totalPenalty);
+
+        completeModal.style.display = "flex";
+        autoStatusPill.innerText = "⏳ スプレッドシートに記録中...";
+        autoStatusPill.style.background = "#fff3e0";
+        autoStatusPill.style.color = "#e65100";
+        
+        // 結果表示UI
+        summaryInfoText.innerHTML = `
+            <div class="final-score-box">
+                <div class="final-score-title">🏆 最終スコア 🏆</div>
+                <div class="final-score-number">${finalScore}<span class="final-score-unit">点</span></div>
+                <div class="breakdown-box">
+                    <div>・ フォーム基礎平均点: <strong>${baseAvgScore}点</strong></div>
+                    <div>・ ブー音発生 (エラー): <strong>${errorCount}回</strong> (<span style="color: #d32f2f; font-weight: bold;">-${totalPenalty}点</span>)</div>
+                </div>
+            </div>
+        `;
+
+        // スプレッドシートへのデータ送信処理
+        const sendName = currentUserName || "匿名";
+        const scoreDetailsText = `基礎点:${baseAvgScore}点 / エラー:${errorCount}回(-${totalPenalty}点)`;
+
+        const formData = new FormData();
+        formData.append(ENTRY_NAME, sendName);                  // 1. 氏名
+        formData.append(ENTRY_SCORE, String(finalScore));        // 2. 点数
+        formData.append(ENTRY_DETAILS, scoreDetailsText);        // 3. スコア詳細
+
+        fetch(FORM_URL, {
+            method: "POST",
+            mode: "no-cors",
+            body: formData
+        }).finally(() => {
+            autoStatusPill.innerText = "✅ スプレッドシートに記録しました！";
+            autoStatusPill.style.background = "#e8f5e9";
+            autoStatusPill.style.color = "#2e7d32";
+        });
+
+        if (autoNextTimer) clearTimeout(autoNextTimer);
+        autoNextTimer = setTimeout(() => {
+            nextUser();
+        }, 3000);
+    }
+
+    function nextUser() {
+        if (autoNextTimer) {
+            clearTimeout(autoNextTimer);
+            autoNextTimer = null;
+        }
+        completeModal.style.display = "none";
+        startModal.style.display = "flex";
+        userNameInput.value = "";
+        userNameInput.focus();
+        
+        resetSession();
+        isCompleted = false;
+        isSaved = false;
+    }
+
+    function calculateAccurate2DAngle(a, b, c, width, height) {
+        const ax = a.x * width, ay = a.y * height;
+        const bx = b.x * width, by = b.y * height;
+        const cx = c.x * width, cy = c.y * height;
+
+        const radians = Math.atan2(cy - by, cx - bx) - Math.atan2(ay - by, ax - bx);
+        let angle = Math.abs(radians * (180.0 / Math.PI));
+        if (angle > 180.0) {
+            angle = 360 - angle;
+        }
+        return angle;
+    }
+
+    function calculateVectorAngle(p1, p2, width, height) {
+        const dx = (p2.x - p1.x) * width;
+        const dy = (p2.y - p1.y) * height;
+        return Math.atan2(dy, dx) * (180.0 / Math.PI);
+    }
+
+    function calculateParallelDiff(shoulder, hip, knee, ankle, width, height) {
+        const torsoAngle = calculateVectorAngle(hip, shoulder, width, height);
+        const shinAngle = calculateVectorAngle(ankle, knee, width, height);
+
+        let diff = Math.abs(torsoAngle - shinAngle);
+        if (diff > 180) diff = 360 - diff;
+        return diff;
+    }
+
+    const pose = new Pose({
+        locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`
+    });
+
+    pose.setOptions({
+        modelComplexity: 0,
+        smoothLandmarks: true,
+        minDetectionConfidence: 0.5,
+        minTrackingConfidence: 0.5
+    });
+
+    pose.onResults((results) => {
+        if (videoElement.videoWidth && videoElement.videoHeight) {
+            if (canvasElement.width !== videoElement.videoWidth || canvasElement.height !== videoElement.videoHeight) {
+                canvasElement.width = videoElement.videoWidth;
+                canvasElement.height = videoElement.videoHeight;
+            }
+        }
+
+        const isUserMode = (facingMode === 'user');
+        const cWidth = canvasElement.width;
+        const cHeight = canvasElement.height;
+
+        canvasCtx.save();
+        canvasCtx.clearRect(0, 0, cWidth, cHeight);
+
+        if (isUserMode) {
+            canvasCtx.translate(cWidth, 0);
+            canvasCtx.scale(-1, 1);
+        }
+        canvasCtx.drawImage(results.image, 0, 0, cWidth, cHeight);
+
+        if (count < TARGET_COUNT && startModal.style.display === "none") {
+            statusElement.innerText = `${currentUserName}さん: 全身を映してスクワットしてください`;
+        }
+
+        if (results.poseLandmarks && startModal.style.display === "none" && !isCompleted) {
+            const lShoulder = results.poseLandmarks[11];
+            const lHip = results.poseLandmarks[23];
+            const lKnee = results.poseLandmarks[25];
+            const lAnkle = results.poseLandmarks[27];
+            const lToe = results.poseLandmarks[31];
+
+            const rShoulder = results.poseLandmarks[12];
+            const rHip = results.poseLandmarks[24];
+            const rKnee = results.poseLandmarks[26];
+            const rAnkle = results.poseLandmarks[28];
+            const rToe = results.poseLandmarks[32];
+
+            const lAngle = (lHip && lKnee && lAnkle) ? calculateAccurate2DAngle(lHip, lKnee, lAnkle, cWidth, cHeight) : 180;
+            const rAngle = (rHip && rKnee && rAnkle) ? calculateAccurate2DAngle(rHip, rKnee, rAnkle, cWidth, cHeight) : 180;
+
+            const leftScore = (lShoulder?.visibility || 0) + (lHip?.visibility || 0) + (lKnee?.visibility || 0) + (lAnkle?.visibility || 0);
+            const rightScore = (rShoulder?.visibility || 0) + (rHip?.visibility || 0) + (rKnee?.visibility || 0) + (rAnkle?.visibility || 0);
+
+            let mainShoulder = lShoulder, mainHip = lHip, mainKnee = lKnee, mainAnkle = lAnkle, mainToe = lToe;
+            let currentAngle = lAngle;
+
+            if (rightScore > leftScore) {
+                mainShoulder = rShoulder; mainHip = rHip; mainKnee = rKnee; mainAnkle = rAnkle; mainToe = rToe;
+                currentAngle = rAngle;
+            }
+
+            if (mainShoulder && mainHip && mainKnee && mainAnkle && mainToe) {
+                const sX = mainShoulder.x * cWidth, sY = mainShoulder.y * cHeight;
+                const hX = mainHip.x * cWidth, hY = mainHip.y * cHeight;
+                const kX = mainKnee.x * cWidth, kY = mainKnee.y * cHeight;
+                const aX = mainAnkle.x * cWidth, aY = mainAnkle.y * cHeight;
+                const tX = mainToe.x * cWidth, tY = mainToe.y * cHeight;
+
+                const parallelDiff = calculateParallelDiff(mainShoulder, mainHip, mainKnee, mainAnkle, cWidth, cHeight);
+                const isParallelOK = parallelDiff <= PARALLEL_MAX_DIFF;
+
+                const footDir = tX - aX;
+                let isKneePastToe = false;
+                
+                if (Math.abs(footDir) > cWidth * 0.01) {
+                    if (footDir > 0 && (kX - tX) > 0) isKneePastToe = true;
+                    if (footDir < 0 && (tX - kX) > 0) isKneePastToe = true;
+                } else {
+                    if (kX > tX || kX > aX + 20) isKneePastToe = true;
+                }
+
+                if (isKneePastToe && currentAngle < 155) {
+                    if (!hasFormViolation) {
+                        playBuzzerSound();
+                        errorCount++;
+                    }
+                    hasFormViolation = true;
+                    stage = "up";
+                    downConfirmationFrames = 0;
+                    if (count < TARGET_COUNT) {
+                        statusElement.innerText = "⚠️ 膝がつま先より前に出ています！（ノーカウント）";
+                        statusElement.style.color = "#ff5252";
+                    }
+                }
+
+                if (currentAngle <= SQUAT_DOWN_THRESHOLD && !isKneePastToe && !hasFormViolation) {
+                    if (isParallelOK) {
+                        downConfirmationFrames++;
+                        if (downConfirmationFrames >= 2) {
+                            stage = "down";
+                            if (count < TARGET_COUNT) {
+                                statusElement.innerText = "✨ 理想的なフォームです！そのまま立ち上がりましょう";
+                                statusElement.style.color = "#4caf50";
+                            }
+                        }
+                    } else {
+                        downConfirmationFrames = 0;
+                        if (count < TARGET_COUNT) {
+                            statusElement.innerText = `⚠️ 体幹とすねを平行に保ってください（現在差: ${Math.round(parallelDiff)}° / 目標: 15°以内）`;
+                            statusElement.style.color = "#ff9800";
+                        }
+                    }
+                } else if (currentAngle > SQUAT_DOWN_THRESHOLD && currentAngle < SQUAT_UP_THRESHOLD) {
+                    downConfirmationFrames = 0;
+                    if (!hasFormViolation && count < TARGET_COUNT) {
+                        statusElement.style.color = "#eee";
+                    }
+                }
+
+                if (stage === "down" || currentAngle <= SQUAT_DOWN_THRESHOLD) {
+                    if (parallelDiff < currentRepMinDiff) currentRepMinDiff = parallelDiff;
+                    if (currentAngle < currentRepMinKneeAngle) currentRepMinKneeAngle = currentAngle;
+                }
+
+                if (currentAngle >= SQUAT_UP_THRESHOLD) {
+                    if (stage === "down" && !hasFormViolation && !isKneePastToe) {
+                        count++;
+                        countElement.innerText = count;
+
+                        let parallelScore = 50;
+                        if (currentRepMinDiff > 10) {
+                            parallelScore = Math.max(0, 50 - (currentRepMinDiff - 10) * 3.3);
+                        }
+
+                        let depthScore = 50;
+                        if (currentRepMinKneeAngle > 110) {
+                            depthScore = Math.max(0, 50 - (currentRepMinKneeAngle - 110) * 3.3);
+                        }
+
+                        const repScore = Math.round(parallelScore + depthScore);
+                        repScores.push(repScore);
+
+                        const avgScore = Math.round(repScores.reduce((a, b) => a + b, 0) / repScores.length);
+                        scoreBadge.innerText = `⭐ 最新: ${repScore}点 / 平均: ${avgScore}点`;
+
+                        if (count < TARGET_COUNT) {
+                            playSuccessSound();
+                        } else {
+                            handleAutoCompletion();
+                        }
+                    }
+
+                    stage = "up";
+                    hasFormViolation = false;
+                    downConfirmationFrames = 0;
+                    currentRepMinDiff = 999;
+                    currentRepMinKneeAngle = 180;
+
+                    if (count < TARGET_COUNT) {
+                        statusElement.innerText = `${currentUserName}さん: 全身を映してスクワットしてください`;
+                        statusElement.style.color = "#eee";
+                    }
+                }
+
+                const isGoodForm = (currentAngle <= SQUAT_DOWN_THRESHOLD || stage === "down") && isParallelOK && !isKneePastToe && !hasFormViolation;
+
+                // 描画：つま先垂直ライン
+                canvasCtx.beginPath();
+                canvasCtx.setLineDash([8, 8]);
+                canvasCtx.moveTo(tX, 0);
+                canvasCtx.lineTo(tX, cHeight);
+                canvasCtx.lineWidth = 3;
+                canvasCtx.strokeStyle = (isKneePastToe || hasFormViolation) ? '#FF0000' : 'rgba(255, 255, 255, 0.7)';
+                canvasCtx.stroke();
+                canvasCtx.setLineDash([]);
+
+                // 描画：骨格リンク
+                canvasCtx.beginPath();
+                canvasCtx.moveTo(sX, sY);
+                canvasCtx.lineTo(hX, hY);
+                canvasCtx.lineTo(kX, kY);
+                canvasCtx.lineTo(aX, aY);
+                canvasCtx.lineTo(tX, tY);
+                canvasCtx.lineWidth = Math.max(4, cWidth / 90);
+                canvasCtx.strokeStyle = (isKneePastToe || hasFormViolation) ? '#FF0000' : (isGoodForm ? '#00FF00' : '#FF9800');
+                canvasCtx.stroke();
+
+                // 描画：関節点
+                [ {x: sX, y: sY}, {x: hX, y: hY}, {x: kX, y: kY}, {x: aX, y: aY}, {x: tX, y: tY} ].forEach(pt => {
+                    canvasCtx.beginPath();
+                    canvasCtx.arc(pt.x, pt.y, Math.max(6, cWidth / 80), 0, 2 * Math.PI);
+                    canvasCtx.fillStyle = '#FFFFFF';
+                    canvasCtx.fill();
+                    canvasCtx.lineWidth = 2;
+                    canvasCtx.strokeStyle = '#000000';
+                    canvasCtx.stroke();
+                });
+
+                // 描画：リアルタイムテキスト
+                canvasCtx.save();
+                canvasCtx.translate(kX, kY);
+                if (isUserMode) {
+                    canvasCtx.scale(-1, 1);
+                }
+                canvasCtx.font = "bold " + Math.max(18, Math.round(cWidth / 28)) + "px sans-serif";
+                canvasCtx.fillStyle = (isKneePastToe || hasFormViolation) ? "#FF0000" : (isGoodForm ? "#00FF00" : "#FFFF00");
+                canvasCtx.strokeStyle = "#000000";
+                canvasCtx.lineWidth = 4;
+                
+                const displayText = `膝:${Math.round(currentAngle)}° / 平行差:${Math.round(parallelDiff)}°`;
+                canvasCtx.strokeText(displayText, -50, -15);
+                canvasCtx.fillText(displayText, -50, -15);
+                canvasCtx.restore();
+            }
+        }
+        canvasCtx.restore();
+    });
+
+    async function processFrame() {
+        if (!cameraRunning) return;
+
+        const now = performance.now();
+        if (!isProcessing && !isCompleted && videoElement.readyState >= 2) {
+            if (now - lastProcessTime >= 50) {
+                lastProcessTime = now;
+                isProcessing = true;
+                try {
+                    await pose.send({ image: videoElement });
+                } catch (e) {
+                    console.error(e);
+                }
+                isProcessing = false;
+            }
+        }
+        requestAnimationFrame(processFrame);
+    }
+
+    async function startCamera() {
+        statusElement.innerText = "カメラを起動中...";
+        switchBtn.disabled = true;
+
+        cameraRunning = false;
+        if (currentStream) {
+            currentStream.getTracks().forEach(track => track.stop());
+            currentStream = null;
+        }
+        videoElement.srcObject = null;
+
+        try {
+            const constraints = {
+                audio: false,
+                video: {
+                    facingMode: facingMode,
+                    width: { ideal: 640 },
+                    height: { ideal: 480 }
+                }
+            };
+
+            currentStream = await navigator.mediaDevices.getUserMedia(constraints);
+            videoElement.srcObject = currentStream;
+
+            await new Promise((resolve) => {
+                videoElement.onloadedmetadata = () => {
+                    videoElement.play();
+                    resolve();
+                };
+            });
+
+            cameraRunning = true;
+            requestAnimationFrame(processFrame);
+            statusElement.innerText = `${currentUserName}さん: 全身を映してスクワットしてください`;
+
+        } catch (err) {
+            console.error(err);
+            statusElement.innerText = "⚠️ カメラ起動エラー: " + err.message;
+            statusElement.style.color = "#ff5252";
+        } finally {
+            switchBtn.disabled = false;
+        }
+    }
+
+    async function toggleCamera() {
+        facingMode = (facingMode === 'user') ? 'environment' : 'user';
+        await startCamera();
+    }
+</script>
+
+</body>
+</html>
