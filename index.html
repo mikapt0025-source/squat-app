@@ -493,19 +493,26 @@
         const sendName = currentUserName || "匿名";
         const scoreDetailsText = `基礎点:${baseAvgScore}点 / エラー:${errorCount}回(-${totalPenalty}点)`;
 
-        const formData = new FormData();
-        formData.append(ENTRY_NAME, sendName);
-        formData.append(ENTRY_SCORE, String(finalScore));
-        formData.append(ENTRY_DETAILS, scoreDetailsText);
+        // Googleフォーム用に URLSearchParams を使用 (確実にスプレッドシートへ送信)
+        const params = new URLSearchParams();
+        params.append(ENTRY_NAME, sendName);
+        params.append(ENTRY_SCORE, String(finalScore));
+        params.append(ENTRY_DETAILS, scoreDetailsText);
 
         fetch(FORM_URL, {
             method: "POST",
             mode: "no-cors",
-            body: formData
-        }).finally(() => {
+            headers: {
+                "Content-Type": "application/x-www-form-urlencoded"
+            },
+            body: params
+        }).then(() => {
             autoStatusPill.innerText = "✅ スプレッドシートに記録しました！";
             autoStatusPill.style.background = "#e8f5e9";
             autoStatusPill.style.color = "#2e7d32";
+        }).catch((err) => {
+            console.error(err);
+            autoStatusPill.innerText = "⚠️ 記録に失敗しました";
         });
     }
 
@@ -651,8 +658,8 @@
                         stage = "down";
                         if (count < TARGET_COUNT) {
                             if (isParallelOK) {
-                                statusElement.innerText = "✨ 理想的なフォーム！そのまま立ち上がりましょう";
-                                statusElement.style.color = "#4caf50";
+                                statusElement.innerText = "✨ GREAT!! 完璧なフォームです！そのまま立ち上がりましょう";
+                                statusElement.style.color = "#00ff00";
                             } else {
                                 statusElement.innerText = `👍 GOOD！そのまま立ち上がりましょう（平行差: ${Math.round(parallelDiff)}°）`;
                                 statusElement.style.color = "#ff9800";
@@ -711,8 +718,21 @@
                     }
                 }
 
-                const isGoodForm = (currentAngle <= SQUAT_DOWN_THRESHOLD || stage === "down") && isParallelOK && !isKneePastToe && !hasFormViolation;
+                // 色判定ルール
+                // 通常：黄色 (#FFFF00) / 膝が前に出た：赤色 (#FF0000) / 120度曲がった：緑色 (#00FF00)
+                let lineColor = '#FFFF00'; 
+                let isGreatCondition = false;
 
+                if (isKneePastToe || hasFormViolation) {
+                    lineColor = '#FF0000'; // 膝前出（赤）
+                } else if (currentAngle <= SQUAT_DOWN_THRESHOLD) {
+                    lineColor = '#00FF00'; // 120度曲がった（緑）
+                    if (isParallelOK) {
+                        isGreatCondition = true; // 120度かつ平行（GREAT）
+                    }
+                }
+
+                // 描画：つま先垂直ライン
                 canvasCtx.beginPath();
                 canvasCtx.setLineDash([8, 8]);
                 canvasCtx.moveTo(tX, 0);
@@ -722,6 +742,7 @@
                 canvasCtx.stroke();
                 canvasCtx.setLineDash([]);
 
+                // 描画：骨格ライン
                 canvasCtx.beginPath();
                 canvasCtx.moveTo(sX, sY);
                 canvasCtx.lineTo(hX, hY);
@@ -729,9 +750,10 @@
                 canvasCtx.lineTo(aX, aY);
                 canvasCtx.lineTo(tX, tY);
                 canvasCtx.lineWidth = Math.max(4, cWidth / 90);
-                canvasCtx.strokeStyle = (isKneePastToe || hasFormViolation) ? '#FF0000' : (isGoodForm ? '#00FF00' : '#FF9800');
+                canvasCtx.strokeStyle = lineColor;
                 canvasCtx.stroke();
 
+                // 描画：関節点
                 [ {x: sX, y: sY}, {x: hX, y: hY}, {x: kX, y: kY}, {x: aX, y: aY}, {x: tX, y: tY} ].forEach(pt => {
                     canvasCtx.beginPath();
                     canvasCtx.arc(pt.x, pt.y, Math.max(6, cWidth / 80), 0, 2 * Math.PI);
@@ -742,13 +764,25 @@
                     canvasCtx.stroke();
                 });
 
+                // 描画：リアルタイムテキスト & GREAT表示
                 canvasCtx.save();
                 canvasCtx.translate(kX, kY);
                 if (isUserMode) {
                     canvasCtx.scale(-1, 1);
                 }
+
+                // ✨ GREAT! の文字描画（条件達成時）
+                if (isGreatCondition) {
+                    canvasCtx.font = "900 " + Math.max(26, Math.round(cWidth / 22)) + "px sans-serif";
+                    canvasCtx.fillStyle = "#00FF00";
+                    canvasCtx.strokeStyle = "#000000";
+                    canvasCtx.lineWidth = 6;
+                    canvasCtx.strokeText("✨ GREAT!", -60, -50);
+                    canvasCtx.fillText("✨ GREAT!", -60, -50);
+                }
+
                 canvasCtx.font = "bold " + Math.max(18, Math.round(cWidth / 28)) + "px sans-serif";
-                canvasCtx.fillStyle = (isKneePastToe || hasFormViolation) ? "#FF0000" : (isGoodForm ? "#00FF00" : "#FFFF00");
+                canvasCtx.fillStyle = lineColor;
                 canvasCtx.strokeStyle = "#000000";
                 canvasCtx.lineWidth = 4;
                 
