@@ -192,15 +192,16 @@
 
         .btn-next-instant {
             width: 100%;
-            padding: 14px;
-            font-size: 16px;
+            padding: 16px;
+            font-size: 17px;
             font-weight: bold;
-            color: #555;
-            background: #f0f2f5;
-            border: 1px solid #ddd;
+            color: #fff;
+            background: linear-gradient(135deg, #2196f3 0%, #1976d2 100%);
+            border: none;
             border-radius: 12px;
             cursor: pointer;
-            margin-top: 10px;
+            margin-top: 14px;
+            box-shadow: 0 4px 12px rgba(33, 150, 243, 0.3);
         }
         .btn-next-instant:active { transform: scale(0.98); }
 
@@ -222,7 +223,6 @@
             margin-bottom: 8px;
         }
 
-        /* でかスコア表示領域 */
         .final-score-box {
             margin: 12px 0 16px 0;
             padding: 18px 12px;
@@ -280,7 +280,6 @@
     <div class="status" id="status">開始準備完了</div>
 </div>
 
-<!-- 1. 名前入力画面 -->
 <div id="start-modal" class="modal-overlay">
     <div class="modal-card">
         <div style="font-size: 48px; margin-bottom: 8px;">🏋️</div>
@@ -291,7 +290,6 @@
     </div>
 </div>
 
-<!-- 2. 10回達成時の自動完了画面 -->
 <div id="complete-modal" class="modal-overlay" style="display: none;">
     <div class="modal-card">
         <div class="complete-badge">🎉</div>
@@ -300,25 +298,22 @@
         
         <div id="summary-info-text"></div>
 
-        <p id="auto-guide-text" style="margin-bottom: 8px; font-size: 13px; color: #777;">まもなく次の人の入力画面へ移動します...</p>
-        <button class="btn-next-instant" onclick="nextUser()">👤 今すぐ次の人を入力</button>
+        <button class="btn-next-instant" onclick="nextUser()">👤 次の人を入力する</button>
     </div>
 </div>
 
 <script>
-    // ★★★ 取得した専用Googleフォームの設定値 ★★★
     const FORM_URL      = "https://docs.google.com/forms/d/e/1FAIpQLScTCuKIoE3i4oevh-S-6fRpfh-DQCkW-RDRytifNsWRaAZ-Kw/formResponse";
-    const ENTRY_NAME    = "entry.694385185";  // 1. 氏名
-    const ENTRY_SCORE   = "entry.18361761";   // 2. 点数
-    const ENTRY_DETAILS = "entry.122944283";  // 3. スコア詳細
+    const ENTRY_NAME    = "entry.694385185"; 
+    const ENTRY_SCORE   = "entry.18361761";  
+    const ENTRY_DETAILS = "entry.122944283"; 
     
     const TARGET_COUNT = 10;
 
-    // パラメータ設定
     const SQUAT_DOWN_THRESHOLD = 120; // 膝屈曲角度 (度)
     const SQUAT_UP_THRESHOLD = 160;   // 立ち上がり角度 (度)
     const PARALLEL_MAX_DIFF = 15;     // 許容角度差 (度)
-    const ERROR_PENALTY_PTS = 5;      // ブー音1回につき何点減点するか
+    const ERROR_PENALTY_PTS = 5;      // ブー音1回につき減点
 
     const videoElement = document.getElementById('video');
     const canvasElement = document.getElementById('output_canvas');
@@ -346,14 +341,11 @@
     let isSaved = false;
     let currentUserName = "";
     let lastProcessTime = 0;
-    let autoNextTimer = null;
 
-    // スコアリング変数
     let repScores = [];
     let currentRepMinDiff = 999;
     let currentRepMinKneeAngle = 180;
 
-    // Web Audio API
     let audioCtx = null;
     function initAudio() {
         if (!audioCtx) {
@@ -475,15 +467,11 @@
 
         playFanfareSound();
 
-        // 1. 基礎スコア（10回のフォーム平均点）
         const baseAvgScore = repScores.length > 0 
             ? Math.round(repScores.reduce((a, b) => a + b, 0) / repScores.length) 
             : 0;
 
-        // 2. エラー減点（1ブーにつき -5点）
         const totalPenalty = errorCount * ERROR_PENALTY_PTS;
-
-        // 3. 最終総合スコア
         const finalScore = Math.max(0, baseAvgScore - totalPenalty);
 
         completeModal.style.display = "flex";
@@ -491,7 +479,6 @@
         autoStatusPill.style.background = "#fff3e0";
         autoStatusPill.style.color = "#e65100";
         
-        // 結果表示UI
         summaryInfoText.innerHTML = `
             <div class="final-score-box">
                 <div class="final-score-title">🏆 最終スコア 🏆</div>
@@ -503,14 +490,13 @@
             </div>
         `;
 
-        // スプレッドシートへのデータ送信処理
         const sendName = currentUserName || "匿名";
         const scoreDetailsText = `基礎点:${baseAvgScore}点 / エラー:${errorCount}回(-${totalPenalty}点)`;
 
         const formData = new FormData();
-        formData.append(ENTRY_NAME, sendName);                  // 1. 氏名
-        formData.append(ENTRY_SCORE, String(finalScore));        // 2. 点数
-        formData.append(ENTRY_DETAILS, scoreDetailsText);        // 3. スコア詳細
+        formData.append(ENTRY_NAME, sendName);
+        formData.append(ENTRY_SCORE, String(finalScore));
+        formData.append(ENTRY_DETAILS, scoreDetailsText);
 
         fetch(FORM_URL, {
             method: "POST",
@@ -521,18 +507,9 @@
             autoStatusPill.style.background = "#e8f5e9";
             autoStatusPill.style.color = "#2e7d32";
         });
-
-        if (autoNextTimer) clearTimeout(autoNextTimer);
-        autoNextTimer = setTimeout(() => {
-            nextUser();
-        }, 3000);
     }
 
     function nextUser() {
-        if (autoNextTimer) {
-            clearTimeout(autoNextTimer);
-            autoNextTimer = null;
-        }
         completeModal.style.display = "none";
         startModal.style.display = "flex";
         userNameInput.value = "";
@@ -669,20 +646,17 @@
                 }
 
                 if (currentAngle <= SQUAT_DOWN_THRESHOLD && !isKneePastToe && !hasFormViolation) {
-                    if (isParallelOK) {
-                        downConfirmationFrames++;
-                        if (downConfirmationFrames >= 2) {
-                            stage = "down";
-                            if (count < TARGET_COUNT) {
-                                statusElement.innerText = "✨ 理想的なフォームです！そのまま立ち上がりましょう";
-                                statusElement.style.color = "#4caf50";
-                            }
-                        }
-                    } else {
-                        downConfirmationFrames = 0;
+                    downConfirmationFrames++;
+                    if (downConfirmationFrames >= 2) {
+                        stage = "down";
                         if (count < TARGET_COUNT) {
-                            statusElement.innerText = `⚠️ 体幹とすねを平行に保ってください（現在差: ${Math.round(parallelDiff)}° / 目標: 15°以内）`;
-                            statusElement.style.color = "#ff9800";
+                            if (isParallelOK) {
+                                statusElement.innerText = "✨ 理想的なフォーム！そのまま立ち上がりましょう";
+                                statusElement.style.color = "#4caf50";
+                            } else {
+                                statusElement.innerText = `👍 GOOD！そのまま立ち上がりましょう（平行差: ${Math.round(parallelDiff)}°）`;
+                                statusElement.style.color = "#ff9800";
+                            }
                         }
                     }
                 } else if (currentAngle > SQUAT_DOWN_THRESHOLD && currentAngle < SQUAT_UP_THRESHOLD) {
@@ -739,7 +713,6 @@
 
                 const isGoodForm = (currentAngle <= SQUAT_DOWN_THRESHOLD || stage === "down") && isParallelOK && !isKneePastToe && !hasFormViolation;
 
-                // 描画：つま先垂直ライン
                 canvasCtx.beginPath();
                 canvasCtx.setLineDash([8, 8]);
                 canvasCtx.moveTo(tX, 0);
@@ -749,7 +722,6 @@
                 canvasCtx.stroke();
                 canvasCtx.setLineDash([]);
 
-                // 描画：骨格リンク
                 canvasCtx.beginPath();
                 canvasCtx.moveTo(sX, sY);
                 canvasCtx.lineTo(hX, hY);
@@ -760,7 +732,6 @@
                 canvasCtx.strokeStyle = (isKneePastToe || hasFormViolation) ? '#FF0000' : (isGoodForm ? '#00FF00' : '#FF9800');
                 canvasCtx.stroke();
 
-                // 描画：関節点
                 [ {x: sX, y: sY}, {x: hX, y: hY}, {x: kX, y: kY}, {x: aX, y: aY}, {x: tX, y: tY} ].forEach(pt => {
                     canvasCtx.beginPath();
                     canvasCtx.arc(pt.x, pt.y, Math.max(6, cWidth / 80), 0, 2 * Math.PI);
@@ -771,7 +742,6 @@
                     canvasCtx.stroke();
                 });
 
-                // 描画：リアルタイムテキスト
                 canvasCtx.save();
                 canvasCtx.translate(kX, kY);
                 if (isUserMode) {
