@@ -139,19 +139,21 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            padding: 20px;
+            padding: 16px;
         }
 
         .modal-card {
             background: #ffffff;
             color: #333;
             border-radius: 24px;
-            padding: 28px 20px;
+            padding: 24px 20px;
             width: 100%;
-            max-width: 380px;
+            max-width: 660px;
             text-align: center;
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
             animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            max-height: 90vh;
+            overflow-y: auto;
         }
 
         @keyframes popIn {
@@ -159,11 +161,12 @@
             to { transform: scale(1); opacity: 1; }
         }
 
-        .modal-card h2 { margin: 0 0 8px 0; font-size: 22px; color: #222; }
+        .modal-card h2 { margin: 0 0 6px 0; font-size: 22px; color: #222; }
         .modal-card p { margin: 0 0 16px 0; color: #666; font-size: 14px; line-height: 1.5; }
 
         .name-input {
             width: 100%;
+            max-width: 320px;
             padding: 14px 18px;
             font-size: 17px;
             border-radius: 12px;
@@ -178,6 +181,7 @@
 
         .btn-start {
             width: 100%;
+            max-width: 320px;
             padding: 16px;
             font-size: 18px;
             font-weight: bold;
@@ -206,65 +210,142 @@
         .btn-next-instant:active { transform: scale(0.98); }
 
         .complete-title {
-            font-size: 24px !important;
+            font-size: 22px !important;
             color: #e65100 !important;
             font-weight: 900;
         }
-        .complete-badge { font-size: 48px; margin-bottom: 4px; }
+        .complete-badge { font-size: 40px; margin-bottom: 2px; }
 
         .status-pill {
             display: inline-block;
             background: #e8f5e9;
             color: #2e7d32;
-            padding: 6px 16px;
+            padding: 4px 14px;
             border-radius: 20px;
-            font-size: 14px;
+            font-size: 13px;
             font-weight: bold;
-            margin-bottom: 8px;
+            margin-bottom: 12px;
+        }
+
+        /* 左右2カラムレイアウト */
+        .results-grid {
+            display: flex;
+            flex-direction: row;
+            gap: 16px;
+            margin: 12px 0;
+            text-align: left;
+        }
+
+        @media (max-width: 560px) {
+            .results-grid {
+                flex-direction: column;
+            }
+        }
+
+        .result-col-left, .result-col-right {
+            flex: 1;
+            background: #fdfdfd;
+            border-radius: 16px;
+            padding: 14px;
+            border: 1px solid #e0e0e0;
+        }
+
+        .column-title {
+            font-size: 15px;
+            font-weight: 800;
+            color: #333;
+            margin-bottom: 10px;
+            text-align: center;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 6px;
         }
 
         .final-score-box {
-            margin: 12px 0 16px 0;
-            padding: 18px 12px;
+            padding: 14px 10px;
             background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%);
-            border-radius: 20px;
+            border-radius: 16px;
             border: 2px solid #ffb74d;
-            box-shadow: inset 0 2px 4px rgba(255, 255, 255, 0.8), 0 4px 12px rgba(230, 81, 0, 0.15);
+            text-align: center;
         }
         .final-score-title {
-            font-size: 15px;
+            font-size: 13px;
             font-weight: 800;
             color: #e65100;
             letter-spacing: 1px;
             margin-bottom: 2px;
         }
         .final-score-number {
-            font-size: 72px;
+            font-size: 56px;
             font-weight: 900;
             color: #d84315;
             line-height: 1;
-            text-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
         .final-score-unit {
-            font-size: 28px;
+            font-size: 22px;
             color: #e65100;
             font-weight: bold;
-            margin-left: 2px;
         }
         .breakdown-box {
-            font-size: 13px;
+            font-size: 12px;
             color: #555;
-            text-align: left;
             background: #ffffff;
-            padding: 10px 14px;
-            border-radius: 12px;
+            padding: 8px 12px;
+            border-radius: 10px;
             border: 1px solid #ffe0b2;
-            margin-top: 10px;
+            margin-top: 8px;
             line-height: 1.6;
+        }
+
+        /* ランキング表示リスト */
+        .ranking-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        .ranking-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 10px;
+            margin-bottom: 6px;
+            background: #fff;
+            border-radius: 10px;
+            border: 1px solid #eee;
+            font-size: 13px;
+        }
+        .ranking-item.highlight {
+            background: #fff8e1;
+            border: 2px solid #ffe082;
+            font-weight: bold;
+            box-shadow: 0 2px 6px rgba(255, 193, 7, 0.3);
+        }
+        .rank-badge {
+            font-weight: 800;
+            width: 32px;
+        }
+        .rank-name {
+            flex: 1;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            padding: 0 6px;
+            color: #333;
+        }
+        .rank-score {
+            font-weight: 900;
+            color: #d84315;
         }
     </style>
 </head>
 <body>
+
+<!-- バックグラウンド送信用の隠しフォーム -->
+<iframe name="hidden_iframe" id="hidden_iframe" style="display:none;"></iframe>
+<form id="google-form" action="https://docs.google.com/forms/d/e/1FAIpQLScTCuKIoE3i4oevh-S-6fRpfh-DQCkW-RDRytifNsWRaAZ-Kw/formResponse" method="POST" target="hidden_iframe" style="display:none;">
+    <input type="hidden" name="entry.694385185" id="form-name">
+    <input type="hidden" name="entry.18361761" id="form-score">
+    <input type="hidden" name="entry.122944283" id="form-details">
+</form>
 
 <div class="header-badge">🏋️ スクワットチャレンジ</div>
 <div class="score-badge" id="score-badge">⭐ 平均スコア: -- 点</div>
@@ -281,7 +362,7 @@
 </div>
 
 <div id="start-modal" class="modal-overlay">
-    <div class="modal-card">
+    <div class="modal-card" style="max-width: 380px;">
         <div style="font-size: 48px; margin-bottom: 8px;">🏋️</div>
         <h2>スクワットチャレンジ</h2>
         <p>お名前を入力して「開始」を押すと<br>カメラが起動します。</p>
@@ -296,18 +377,25 @@
         <h2 class="complete-title">10回達成！お疲れ様でした！</h2>
         <div id="auto-status-pill" class="status-pill">✅ 記録完了！</div>
         
-        <div id="summary-info-text"></div>
+        <div class="results-grid">
+            <!-- 左側：今回の結果 -->
+            <div class="result-col-left">
+                <div class="column-title">📊 今回のスコア</div>
+                <div id="summary-info-text"></div>
+            </div>
+
+            <!-- 右側：全体ランキング -->
+            <div class="result-col-right">
+                <div class="column-title">🏆 歴代ランキング (TOP 5)</div>
+                <div id="ranking-list-container"></div>
+            </div>
+        </div>
 
         <button class="btn-next-instant" onclick="nextUser()">👤 次の人を入力する</button>
     </div>
 </div>
 
 <script>
-    const FORM_URL      = "https://docs.google.com/forms/d/e/1FAIpQLScTCuKIoE3i4oevh-S-6fRpfh-DQCkW-RDRytifNsWRaAZ-Kw/formResponse";
-    const ENTRY_NAME    = "entry.694385185"; 
-    const ENTRY_SCORE   = "entry.18361761";  
-    const ENTRY_DETAILS = "entry.122944283"; 
-    
     const TARGET_COUNT = 10;
 
     const SQUAT_DOWN_THRESHOLD = 120; // 膝屈曲角度 (度)
@@ -327,6 +415,7 @@
     const completeModal = document.getElementById('complete-modal');
     const autoStatusPill = document.getElementById('auto-status-pill');
     const summaryInfoText = document.getElementById('summary-info-text');
+    const rankingListContainer = document.getElementById('ranking-list-container');
 
     let count = 0;
     let errorCount = 0;
@@ -341,6 +430,7 @@
     let isSaved = false;
     let currentUserName = "";
     let lastProcessTime = 0;
+    let playedGreatVoiceInCurrentRep = false;
 
     let repScores = [];
     let currentRepMinDiff = 999;
@@ -415,6 +505,33 @@
         });
     }
 
+    // ✨ GREAT! 発生時の効果音＆音声合成（「Great!」発声）
+    function playGreatVoice() {
+        if (audioCtx) {
+            const now = audioCtx.currentTime;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(1046.50, now);
+            gain.gain.setValueAtTime(0.2, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start(now);
+            osc.stop(now + 0.25);
+        }
+
+        if ('speechSynthesis' in window) {
+            window.speechSynthesis.cancel();
+            const uttr = new SpeechSynthesisUtterance('Great!');
+            uttr.lang = 'en-US';
+            uttr.rate = 1.2;
+            uttr.pitch = 1.3;
+            uttr.volume = 1.0;
+            window.speechSynthesis.speak(uttr);
+        }
+    }
+
     window.onload = () => {
         const savedName = localStorage.getItem('squat_saved_name');
         if (savedName) {
@@ -450,6 +567,7 @@
         stage = "up";
         downConfirmationFrames = 0;
         hasFormViolation = false;
+        playedGreatVoiceInCurrentRep = false;
         repScores = [];
         currentRepMinDiff = 999;
         currentRepMinKneeAngle = 180;
@@ -479,41 +597,80 @@
         autoStatusPill.style.background = "#fff3e0";
         autoStatusPill.style.color = "#e65100";
         
+        // 左側：個人結果の表示
         summaryInfoText.innerHTML = `
             <div class="final-score-box">
                 <div class="final-score-title">🏆 最終スコア 🏆</div>
                 <div class="final-score-number">${finalScore}<span class="final-score-unit">点</span></div>
                 <div class="breakdown-box">
-                    <div>・ フォーム基礎平均点: <strong>${baseAvgScore}点</strong></div>
-                    <div>・ ブー音発生 (エラー): <strong>${errorCount}回</strong> (<span style="color: #d32f2f; font-weight: bold;">-${totalPenalty}点</span>)</div>
+                    <div>・ フォーム基礎点: <strong>${baseAvgScore}点</strong></div>
+                    <div>・ エラー発生: <strong>${errorCount}回</strong> (<span style="color: #d32f2f; font-weight: bold;">-${totalPenalty}点</span>)</div>
                 </div>
             </div>
         `;
 
+        // 右側：全体累計ランキングの更新＆表示
+        renderGlobalRankings(currentUserName, finalScore);
+
+        // 確実な HTML フォーム送信処理
         const sendName = currentUserName || "匿名";
         const scoreDetailsText = `基礎点:${baseAvgScore}点 / エラー:${errorCount}回(-${totalPenalty}点)`;
 
-        // Googleフォーム用に URLSearchParams を使用 (確実にスプレッドシートへ送信)
-        const params = new URLSearchParams();
-        params.append(ENTRY_NAME, sendName);
-        params.append(ENTRY_SCORE, String(finalScore));
-        params.append(ENTRY_DETAILS, scoreDetailsText);
+        document.getElementById('form-name').value = sendName;
+        document.getElementById('form-score').value = String(finalScore);
+        document.getElementById('form-details').value = scoreDetailsText;
 
-        fetch(FORM_URL, {
-            method: "POST",
-            mode: "no-cors",
-            headers: {
-                "Content-Type": "application/x-www-form-urlencoded"
-            },
-            body: params
-        }).then(() => {
+        document.getElementById('google-form').submit();
+
+        setTimeout(() => {
             autoStatusPill.innerText = "✅ スプレッドシートに記録しました！";
             autoStatusPill.style.background = "#e8f5e9";
             autoStatusPill.style.color = "#2e7d32";
-        }).catch((err) => {
-            console.error(err);
-            autoStatusPill.innerText = "⚠️ 記録に失敗しました";
+        }, 800);
+    }
+
+    // 全体ランキングの管理関数（localStorage蓄積）
+    function renderGlobalRankings(currentName, currentScore) {
+        let rawData = localStorage.getItem('squat_global_rankings');
+        let rankings = rawData ? JSON.parse(rawData) : [];
+
+        const newRecord = {
+            name: currentName,
+            score: currentScore,
+            timestamp: Date.now()
+        };
+        rankings.push(newRecord);
+
+        // スコア降順（同点なら新しい順）でソート
+        rankings.sort((a, b) => b.score - a.score || b.timestamp - a.timestamp);
+
+        // 50件まで保存
+        localStorage.setItem('squat_global_rankings', JSON.stringify(rankings.slice(0, 50)));
+
+        // TOP 5 の描画 HTML 作成
+        const top5 = rankings.slice(0, 5);
+        let listHtml = '<ul class="ranking-list">';
+
+        top5.forEach((item, idx) => {
+            const isSelf = (item.name === currentName && item.score === currentScore && item.timestamp === newRecord.timestamp);
+            const medal = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `${idx + 1}.`;
+            const highlightClass = isSelf ? 'highlight' : '';
+
+            listHtml += `
+                <li class="ranking-item ${highlightClass}">
+                    <span class="rank-badge">${medal}</span>
+                    <span class="rank-name">${escapeHtml(item.name)}${isSelf ? ' <small>(YOU)</small>' : ''}</span>
+                    <span class="rank-score">${item.score}点</span>
+                </li>
+            `;
         });
+
+        listHtml += '</ul>';
+        rankingListContainer.innerHTML = listHtml;
+    }
+
+    function escapeHtml(str) {
+        return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     }
 
     function nextUser() {
@@ -646,6 +803,7 @@
                     hasFormViolation = true;
                     stage = "up";
                     downConfirmationFrames = 0;
+                    playedGreatVoiceInCurrentRep = false;
                     if (count < TARGET_COUNT) {
                         statusElement.innerText = "⚠️ 膝がつま先より前に出ています！（ノーカウント）";
                         statusElement.style.color = "#ff5252";
@@ -709,6 +867,7 @@
                     stage = "up";
                     hasFormViolation = false;
                     downConfirmationFrames = 0;
+                    playedGreatVoiceInCurrentRep = false;
                     currentRepMinDiff = 999;
                     currentRepMinKneeAngle = 180;
 
@@ -718,8 +877,6 @@
                     }
                 }
 
-                // 色判定ルール
-                // 通常：黄色 (#FFFF00) / 膝が前に出た：赤色 (#FF0000) / 120度曲がった：緑色 (#00FF00)
                 let lineColor = '#FFFF00'; 
                 let isGreatCondition = false;
 
@@ -730,6 +887,12 @@
                     if (isParallelOK) {
                         isGreatCondition = true; // 120度かつ平行（GREAT）
                     }
+                }
+
+                // ✨ GREAT! 達成時の音声発声ロジック（1回だけ再生）
+                if (isGreatCondition && !playedGreatVoiceInCurrentRep) {
+                    playedGreatVoiceInCurrentRep = true;
+                    playGreatVoice();
                 }
 
                 // 描画：つま先垂直ライン
@@ -771,7 +934,6 @@
                     canvasCtx.scale(-1, 1);
                 }
 
-                // ✨ GREAT! の文字描画（条件達成時）
                 if (isGreatCondition) {
                     canvasCtx.font = "900 " + Math.max(26, Math.round(cWidth / 22)) + "px sans-serif";
                     canvasCtx.fillStyle = "#00FF00";
