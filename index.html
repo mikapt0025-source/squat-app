@@ -175,7 +175,7 @@
             color: #333;
             text-align: center;
             outline: none;
-            margin-bottom: 20px;
+            margin-bottom: 14px;
         }
         .name-input:focus { border-color: #4caf50; background: #fff; }
 
@@ -191,8 +191,23 @@
             border-radius: 12px;
             cursor: pointer;
             box-shadow: 0 4px 12px rgba(76, 175, 80, 0.4);
+            margin-bottom: 10px;
         }
         .btn-start:active { transform: scale(0.98); }
+
+        .btn-ranking-view {
+            width: 100%;
+            max-width: 320px;
+            padding: 12px;
+            font-size: 15px;
+            font-weight: bold;
+            color: #e65100;
+            background: #fff3e0;
+            border: 2px solid #ffb74d;
+            border-radius: 12px;
+            cursor: pointer;
+        }
+        .btn-ranking-view:active { transform: scale(0.98); }
 
         .btn-next-instant {
             width: 100%;
@@ -364,6 +379,7 @@
     <div class="status" id="status">開始準備完了</div>
 </div>
 
+<!-- 1. スタート画面 -->
 <div id="start-modal" class="modal-overlay">
     <div class="modal-card" style="max-width: 380px;">
         <div style="font-size: 48px; margin-bottom: 8px;">🏋️</div>
@@ -371,9 +387,22 @@
         <p>お名前を入力して「開始」を押すと<br>カメラが起動します。</p>
         <input type="text" id="user-name" class="name-input" placeholder="氏名を入力してください">
         <button class="btn-start" onclick="startApp()">開始する（カメラ起動）</button>
+        <button class="btn-ranking-view" onclick="openStartRankingModal()">🏆 全体ランキングを見る</button>
     </div>
 </div>
 
+<!-- スタート画面用ランキングモーダル -->
+<div id="start-ranking-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-card" style="max-width: 400px;">
+        <div style="font-size: 40px; margin-bottom: 4px;">🏆</div>
+        <h2>全体ランキング (TOP 5)</h2>
+        <p style="margin-bottom: 12px; font-size: 12px;">これまでのハイスコア一覧です</p>
+        <div id="start-ranking-list-container" style="text-align: left; margin-bottom: 16px;">読み込み中...</div>
+        <button class="btn-next-instant" onclick="closeStartRankingModal()">↩️ スタート画面に戻る</button>
+    </div>
+</div>
+
+<!-- 2. 結果画面 -->
 <div id="complete-modal" class="modal-overlay" style="display: none;">
     <div class="modal-card">
         <div class="complete-badge">🎉</div>
@@ -415,9 +444,11 @@
     const userNameInput = document.getElementById('user-name');
     const startModal = document.getElementById('start-modal');
     const completeModal = document.getElementById('complete-modal');
+    const startRankingModal = document.getElementById('start-ranking-modal');
     const autoStatusPill = document.getElementById('auto-status-pill');
     const summaryInfoText = document.getElementById('summary-info-text');
     const rankingListContainer = document.getElementById('ranking-list-container');
+    const startRankingListContainer = document.getElementById('start-ranking-list-container');
 
     let count = 0;
     let errorCount = 0;
@@ -574,6 +605,26 @@
         }
     };
 
+    function openStartRankingModal() {
+        startRankingModal.style.display = 'flex';
+        startRankingListContainer.innerHTML = '読み込み中...';
+        
+        fetch(GAS_WEB_APP_URL)
+            .then(res => res.json())
+            .then(data => {
+                let top5 = Array.isArray(data) ? data : (data.top5 || []);
+                renderGlobalRankingsFromData(top5, "", -1, startRankingListContainer);
+            })
+            .catch(err => {
+                console.error(err);
+                startRankingListContainer.innerHTML = '<p style="text-align:center; color:#888;">ランキングの取得に失敗しました</p>';
+            });
+    }
+
+    function closeStartRankingModal() {
+        startRankingModal.style.display = 'none';
+    }
+
     function startApp() {
         const name = userNameInput.value.trim();
         if (!name) {
@@ -698,10 +749,10 @@
         }
 
         updateScoreBoxHTML(finalScore, baseAvgScore, totalPenalty, rankStr);
-        renderGlobalRankingsFromData(top5, sendName, finalScore);
+        renderGlobalRankingsFromData(top5, sendName, finalScore, rankingListContainer);
     }
 
-    function renderGlobalRankingsFromData(rankings, currentName, currentScore) {
+    function renderGlobalRankingsFromData(rankings, currentName, currentScore, containerElement) {
         if (!rankings || !Array.isArray(rankings)) return;
 
         let listHtml = '<ul class="ranking-list">';
@@ -719,7 +770,7 @@
             `;
         });
         listHtml += '</ul>';
-        rankingListContainer.innerHTML = listHtml;
+        containerElement.innerHTML = listHtml;
     }
 
     function escapeHtml(str) {
