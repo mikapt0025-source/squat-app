@@ -274,16 +274,29 @@
             margin-bottom: 2px;
         }
         .final-score-number {
-            font-size: 56px;
+            font-size: 52px;
             font-weight: 900;
             color: #d84315;
             line-height: 1;
         }
         .final-score-unit {
-            font-size: 22px;
+            font-size: 20px;
             color: #e65100;
             font-weight: bold;
         }
+
+        .rank-tag {
+            display: inline-block;
+            background: #e65100;
+            color: #ffffff;
+            font-size: 13px;
+            font-weight: bold;
+            padding: 4px 12px;
+            border-radius: 12px;
+            margin-top: 6px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+        }
+
         .breakdown-box {
             font-size: 12px;
             color: #555;
@@ -374,8 +387,8 @@
             </div>
 
             <div class="result-col-right">
-                <div class="column-title">🏆 歴代ランキング (TOP 5)</div>
-                <div id="ranking-list-container"></div>
+                <div class="column-title">🏆 全体ランキング (TOP 5)</div>
+                <div id="ranking-list-container">読み込み中...</div>
             </div>
         </div>
 
@@ -384,7 +397,7 @@
 </div>
 
 <script>
-    const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzseRu8FlguyWzmV9E00t5Yh28WQgRYl7msHVQcMqb_SAYPyDApxpL7393PvaWKVYrR5Q/exec";
+    const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycby3ibPmWdIwSHk9WIJkbxKh7YLyeXtcnOZ1SjiBKRNgct8y4SeIwdnNniI1K01m8FfL5A/exec";
 
     const TARGET_COUNT = 10;
     const SQUAT_DOWN_THRESHOLD = 120;
@@ -434,7 +447,6 @@
             audioCtx.resume();
         }
 
-        // 音声合成エンジンのプリロード（無音発声によるロック解除）
         if ('speechSynthesis' in window) {
             window.speechSynthesis.getVoices();
             const dummy = new SpeechSynthesisUtterance('');
@@ -502,16 +514,14 @@
         });
     }
 
-    // ✨ 強化版 GREAT! 音声＆効果音再生処理
     function playGreatVoice() {
-        // 1. チャイムアタック音（ピポーン♪）
         if (audioCtx) {
             const now = audioCtx.currentTime;
             
             const osc1 = audioCtx.createOscillator();
             const gain1 = audioCtx.createGain();
             osc1.type = 'sine';
-            osc1.frequency.setValueAtTime(783.99, now); // G5
+            osc1.frequency.setValueAtTime(783.99, now);
             gain1.gain.setValueAtTime(0.3, now);
             gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
             osc1.connect(gain1);
@@ -522,7 +532,7 @@
             const osc2 = audioCtx.createOscillator();
             const gain2 = audioCtx.createGain();
             osc2.type = 'sine';
-            osc2.frequency.setValueAtTime(1046.50, now + 0.08); // C6
+            osc2.frequency.setValueAtTime(1046.50, now + 0.08);
             gain2.gain.setValueAtTime(0.4, now + 0.08);
             gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
             osc2.connect(gain2);
@@ -531,18 +541,16 @@
             osc2.stop(now + 0.4);
         }
 
-        // 2. 「Great!」音声読み上げ（ボイス最適化）
         if ('speechSynthesis' in window) {
             window.speechSynthesis.cancel();
             const uttr = new SpeechSynthesisUtterance('Great!');
             uttr.lang = 'en-US';
-            uttr.rate = 1.0;  // 自然で聞き取りやすいスピード
-            uttr.pitch = 1.1; // はっきりした明るいトーン
+            uttr.rate = 1.0;
+            uttr.pitch = 1.1;
             uttr.volume = 1.0;
 
             const voices = window.speechSynthesis.getVoices();
             if (voices.length > 0) {
-                // 英語ネイティブ音声を検索して割り当て
                 const preferredVoice = voices.find(v => v.lang.startsWith('en') && (v.name.includes('Google') || v.name.includes('Samantha') || v.name.includes('Alex') || v.name.includes('Natural')));
                 if (preferredVoice) {
                     uttr.voice = preferredVoice;
@@ -623,62 +631,82 @@
         autoStatusPill.innerText = "⏳ スプレッドシートに記録中...";
         autoStatusPill.style.background = "#fff3e0";
         autoStatusPill.style.color = "#e65100";
-        
-        summaryInfoText.innerHTML = `
-            <div class="final-score-box">
-                <div class="final-score-title">🏆 最終スコア 🏆</div>
-                <div class="final-score-number">${finalScore}<span class="final-score-unit">点</span></div>
-                <div class="breakdown-box">
-                    <div>・ フォーム基礎点: <strong>${baseAvgScore}点</strong></div>
-                    <div>・ エラー発生: <strong>${errorCount}回</strong> (<span style="color: #d32f2f; font-weight: bold;">-${totalPenalty}点</span>)</div>
-                </div>
-            </div>
-        `;
 
-        renderGlobalRankings(currentUserName, finalScore);
+        updateScoreBoxHTML(finalScore, baseAvgScore, totalPenalty, "計算中...");
 
         const sendName = currentUserName || "匿名";
         const scoreDetailsText = `基礎点:${baseAvgScore}点 / エラー:${errorCount}回(-${totalPenalty}点)`;
 
         fetch(GAS_WEB_APP_URL, {
             method: "POST",
-            mode: "no-cors",
-            headers: { "Content-Type": "application/json" },
+            headers: { "Content-Type": "text/plain" },
             body: JSON.stringify({
                 name: sendName,
                 score: finalScore,
                 details: scoreDetailsText
             })
-        }).then(() => {
+        }).then(res => res.json()).then(data => {
             autoStatusPill.innerText = "✅ スプレッドシートに記録しました！";
             autoStatusPill.style.background = "#e8f5e9";
             autoStatusPill.style.color = "#2e7d32";
-        }).catch(() => {
+            
+            processResponseData(data, sendName, finalScore, baseAvgScore, totalPenalty);
+        }).catch(err => {
+            console.error(err);
             autoStatusPill.innerText = "✅ 記録完了！";
             autoStatusPill.style.background = "#e8f5e9";
             autoStatusPill.style.color = "#2e7d32";
+            
+            fetch(GAS_WEB_APP_URL).then(res => res.json()).then(data => {
+                processResponseData(data, sendName, finalScore, baseAvgScore, totalPenalty);
+            });
         });
     }
 
-    function renderGlobalRankings(currentName, currentScore) {
-        let rawData = localStorage.getItem('squat_global_rankings');
-        let rankings = rawData ? JSON.parse(rawData) : [];
+    function updateScoreBoxHTML(score, baseScore, penalty, rankText) {
+        summaryInfoText.innerHTML = `
+            <div class="final-score-box">
+                <div class="final-score-title">🏆 最終スコア 🏆</div>
+                <div class="final-score-number">${score}<span class="final-score-unit">点</span></div>
+                <div><span class="rank-tag">🏆 全体 ${rankText}</span></div>
+                <div class="breakdown-box">
+                    <div>・ フォーム基礎点: <strong>${baseScore}点</strong></div>
+                    <div>・ エラー発生: <strong>${errorCount}回</strong> (<span style="color: #d32f2f; font-weight: bold;">-${penalty}点</span>)</div>
+                </div>
+            </div>
+        `;
+    }
 
-        const newRecord = {
-            name: currentName,
-            score: currentScore,
-            timestamp: Date.now()
-        };
-        rankings.push(newRecord);
+    function processResponseData(data, sendName, finalScore, baseAvgScore, totalPenalty) {
+        let top5 = [];
+        let myRank = "-";
+        let totalCount = 0;
 
-        rankings.sort((a, b) => b.score - a.score || b.timestamp - a.timestamp);
-        localStorage.setItem('squat_global_rankings', JSON.stringify(rankings.slice(0, 50)));
+        if (Array.isArray(data)) {
+            top5 = data;
+            const foundIndex = top5.findIndex(item => item.name === sendName && Number(item.score) === finalScore);
+            if (foundIndex !== -1) myRank = foundIndex + 1;
+        } else if (data && data.top5) {
+            top5 = data.top5;
+            myRank = data.myRank || "-";
+            totalCount = data.totalCount || 0;
+        }
 
-        const top5 = rankings.slice(0, 5);
+        let rankStr = myRank !== "-" ? `${myRank}位` : "記録完了";
+        if (totalCount > 0 && myRank !== "-") {
+            rankStr = `${myRank}位 / ${totalCount}人中`;
+        }
+
+        updateScoreBoxHTML(finalScore, baseAvgScore, totalPenalty, rankStr);
+        renderGlobalRankingsFromData(top5, sendName, finalScore);
+    }
+
+    function renderGlobalRankingsFromData(rankings, currentName, currentScore) {
+        if (!rankings || !Array.isArray(rankings)) return;
+
         let listHtml = '<ul class="ranking-list">';
-
-        top5.forEach((item, idx) => {
-            const isSelf = (item.name === currentName && item.score === currentScore && item.timestamp === newRecord.timestamp);
+        rankings.forEach((item, idx) => {
+            const isSelf = (item.name === currentName && Number(item.score) === currentScore);
             const medal = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `${idx + 1}.`;
             const highlightClass = isSelf ? 'highlight' : '';
 
@@ -690,7 +718,6 @@
                 </li>
             `;
         });
-
         listHtml += '</ul>';
         rankingListContainer.innerHTML = listHtml;
     }
