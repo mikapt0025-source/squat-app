@@ -227,7 +227,6 @@
             margin-bottom: 12px;
         }
 
-        /* 左右2カラムレイアウト */
         .results-grid {
             display: flex;
             flex-direction: row;
@@ -296,7 +295,6 @@
             line-height: 1.6;
         }
 
-        /* ランキング表示リスト */
         .ranking-list {
             list-style: none;
             padding: 0;
@@ -339,14 +337,6 @@
 </head>
 <body>
 
-<!-- バックグラウンド送信用の隠しフォーム -->
-<iframe name="hidden_iframe" id="hidden_iframe" style="display:none;"></iframe>
-<form id="google-form" action="https://docs.google.com/forms/d/e/1FAIpQLScTCuKIoE3i4oevh-S-6fRpfh-DQCkW-RDRytifNsWRaAZ-Kw/formResponse" method="POST" target="hidden_iframe" style="display:none;">
-    <input type="hidden" name="entry.694385185" id="form-name">
-    <input type="hidden" name="entry.18361761" id="form-score">
-    <input type="hidden" name="entry.122944283" id="form-details">
-</form>
-
 <div class="header-badge">🏋️ スクワットチャレンジ</div>
 <div class="score-badge" id="score-badge">⭐ 平均スコア: -- 点</div>
 <button class="switch-btn" id="switch-btn" onclick="toggleCamera()">🔄 カメラ切替</button>
@@ -378,13 +368,11 @@
         <div id="auto-status-pill" class="status-pill">✅ 記録完了！</div>
         
         <div class="results-grid">
-            <!-- 左側：今回の結果 -->
             <div class="result-col-left">
                 <div class="column-title">📊 今回のスコア</div>
                 <div id="summary-info-text"></div>
             </div>
 
-            <!-- 右側：全体ランキング -->
             <div class="result-col-right">
                 <div class="column-title">🏆 歴代ランキング (TOP 5)</div>
                 <div id="ranking-list-container"></div>
@@ -396,12 +384,13 @@
 </div>
 
 <script>
-    const TARGET_COUNT = 10;
+    const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzseRu8FlguyWzmV9E00t5Yh28WQgRYl7msHVQcMqb_SAYPyDApxpL7393PvaWKVYrR5Q/exec";
 
-    const SQUAT_DOWN_THRESHOLD = 120; // 膝屈曲角度 (度)
-    const SQUAT_UP_THRESHOLD = 160;   // 立ち上がり角度 (度)
-    const PARALLEL_MAX_DIFF = 15;     // 許容角度差 (度)
-    const ERROR_PENALTY_PTS = 5;      // ブー音1回につき減点
+    const TARGET_COUNT = 10;
+    const SQUAT_DOWN_THRESHOLD = 120;
+    const SQUAT_UP_THRESHOLD = 160;
+    const PARALLEL_MAX_DIFF = 15;
+    const ERROR_PENALTY_PTS = 5;
 
     const videoElement = document.getElementById('video');
     const canvasElement = document.getElementById('output_canvas');
@@ -443,6 +432,14 @@
         }
         if (audioCtx.state === 'suspended') {
             audioCtx.resume();
+        }
+
+        // 音声合成エンジンのプリロード（無音発声によるロック解除）
+        if ('speechSynthesis' in window) {
+            window.speechSynthesis.getVoices();
+            const dummy = new SpeechSynthesisUtterance('');
+            dummy.volume = 0;
+            window.speechSynthesis.speak(dummy);
         }
     }
 
@@ -505,29 +502,56 @@
         });
     }
 
-    // ✨ GREAT! 発生時の効果音＆音声合成（「Great!」発声）
+    // ✨ 強化版 GREAT! 音声＆効果音再生処理
     function playGreatVoice() {
+        // 1. チャイムアタック音（ピポーン♪）
         if (audioCtx) {
             const now = audioCtx.currentTime;
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            osc.type = 'sine';
-            osc.frequency.setValueAtTime(1046.50, now);
-            gain.gain.setValueAtTime(0.2, now);
-            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
-            osc.connect(gain);
-            gain.connect(audioCtx.destination);
-            osc.start(now);
-            osc.stop(now + 0.25);
+            
+            const osc1 = audioCtx.createOscillator();
+            const gain1 = audioCtx.createGain();
+            osc1.type = 'sine';
+            osc1.frequency.setValueAtTime(783.99, now); // G5
+            gain1.gain.setValueAtTime(0.3, now);
+            gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+            osc1.connect(gain1);
+            gain1.connect(audioCtx.destination);
+            osc1.start(now);
+            osc1.stop(now + 0.2);
+
+            const osc2 = audioCtx.createOscillator();
+            const gain2 = audioCtx.createGain();
+            osc2.type = 'sine';
+            osc2.frequency.setValueAtTime(1046.50, now + 0.08); // C6
+            gain2.gain.setValueAtTime(0.4, now + 0.08);
+            gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+            osc2.connect(gain2);
+            gain2.connect(audioCtx.destination);
+            osc2.start(now + 0.08);
+            osc2.stop(now + 0.4);
         }
 
+        // 2. 「Great!」音声読み上げ（ボイス最適化）
         if ('speechSynthesis' in window) {
             window.speechSynthesis.cancel();
             const uttr = new SpeechSynthesisUtterance('Great!');
             uttr.lang = 'en-US';
-            uttr.rate = 1.2;
-            uttr.pitch = 1.3;
+            uttr.rate = 1.0;  // 自然で聞き取りやすいスピード
+            uttr.pitch = 1.1; // はっきりした明るいトーン
             uttr.volume = 1.0;
+
+            const voices = window.speechSynthesis.getVoices();
+            if (voices.length > 0) {
+                // 英語ネイティブ音声を検索して割り当て
+                const preferredVoice = voices.find(v => v.lang.startsWith('en') && (v.name.includes('Google') || v.name.includes('Samantha') || v.name.includes('Alex') || v.name.includes('Natural')));
+                if (preferredVoice) {
+                    uttr.voice = preferredVoice;
+                } else {
+                    const anyEnVoice = voices.find(v => v.lang.startsWith('en'));
+                    if (anyEnVoice) uttr.voice = anyEnVoice;
+                }
+            }
+
             window.speechSynthesis.speak(uttr);
         }
     }
@@ -536,6 +560,9 @@
         const savedName = localStorage.getItem('squat_saved_name');
         if (savedName) {
             userNameInput.value = savedName;
+        }
+        if ('speechSynthesis' in window) {
+            window.speechSynthesis.getVoices();
         }
     };
 
@@ -597,7 +624,6 @@
         autoStatusPill.style.background = "#fff3e0";
         autoStatusPill.style.color = "#e65100";
         
-        // 左側：個人結果の表示
         summaryInfoText.innerHTML = `
             <div class="final-score-box">
                 <div class="final-score-title">🏆 最終スコア 🏆</div>
@@ -609,27 +635,31 @@
             </div>
         `;
 
-        // 右側：全体累計ランキングの更新＆表示
         renderGlobalRankings(currentUserName, finalScore);
 
-        // 確実な HTML フォーム送信処理
         const sendName = currentUserName || "匿名";
         const scoreDetailsText = `基礎点:${baseAvgScore}点 / エラー:${errorCount}回(-${totalPenalty}点)`;
 
-        document.getElementById('form-name').value = sendName;
-        document.getElementById('form-score').value = String(finalScore);
-        document.getElementById('form-details').value = scoreDetailsText;
-
-        document.getElementById('google-form').submit();
-
-        setTimeout(() => {
+        fetch(GAS_WEB_APP_URL, {
+            method: "POST",
+            mode: "no-cors",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                name: sendName,
+                score: finalScore,
+                details: scoreDetailsText
+            })
+        }).then(() => {
             autoStatusPill.innerText = "✅ スプレッドシートに記録しました！";
             autoStatusPill.style.background = "#e8f5e9";
             autoStatusPill.style.color = "#2e7d32";
-        }, 800);
+        }).catch(() => {
+            autoStatusPill.innerText = "✅ 記録完了！";
+            autoStatusPill.style.background = "#e8f5e9";
+            autoStatusPill.style.color = "#2e7d32";
+        });
     }
 
-    // 全体ランキングの管理関数（localStorage蓄積）
     function renderGlobalRankings(currentName, currentScore) {
         let rawData = localStorage.getItem('squat_global_rankings');
         let rankings = rawData ? JSON.parse(rawData) : [];
@@ -641,13 +671,9 @@
         };
         rankings.push(newRecord);
 
-        // スコア降順（同点なら新しい順）でソート
         rankings.sort((a, b) => b.score - a.score || b.timestamp - a.timestamp);
-
-        // 50件まで保存
         localStorage.setItem('squat_global_rankings', JSON.stringify(rankings.slice(0, 50)));
 
-        // TOP 5 の描画 HTML 作成
         const top5 = rankings.slice(0, 5);
         let listHtml = '<ul class="ranking-list">';
 
@@ -881,21 +907,19 @@
                 let isGreatCondition = false;
 
                 if (isKneePastToe || hasFormViolation) {
-                    lineColor = '#FF0000'; // 膝前出（赤）
+                    lineColor = '#FF0000';
                 } else if (currentAngle <= SQUAT_DOWN_THRESHOLD) {
-                    lineColor = '#00FF00'; // 120度曲がった（緑）
+                    lineColor = '#00FF00';
                     if (isParallelOK) {
-                        isGreatCondition = true; // 120度かつ平行（GREAT）
+                        isGreatCondition = true;
                     }
                 }
 
-                // ✨ GREAT! 達成時の音声発声ロジック（1回だけ再生）
                 if (isGreatCondition && !playedGreatVoiceInCurrentRep) {
                     playedGreatVoiceInCurrentRep = true;
                     playGreatVoice();
                 }
 
-                // 描画：つま先垂直ライン
                 canvasCtx.beginPath();
                 canvasCtx.setLineDash([8, 8]);
                 canvasCtx.moveTo(tX, 0);
@@ -905,7 +929,6 @@
                 canvasCtx.stroke();
                 canvasCtx.setLineDash([]);
 
-                // 描画：骨格ライン
                 canvasCtx.beginPath();
                 canvasCtx.moveTo(sX, sY);
                 canvasCtx.lineTo(hX, hY);
@@ -916,7 +939,6 @@
                 canvasCtx.strokeStyle = lineColor;
                 canvasCtx.stroke();
 
-                // 描画：関節点
                 [ {x: sX, y: sY}, {x: hX, y: hY}, {x: kX, y: kY}, {x: aX, y: aY}, {x: tX, y: tY} ].forEach(pt => {
                     canvasCtx.beginPath();
                     canvasCtx.arc(pt.x, pt.y, Math.max(6, cWidth / 80), 0, 2 * Math.PI);
@@ -927,7 +949,6 @@
                     canvasCtx.stroke();
                 });
 
-                // 描画：リアルタイムテキスト & GREAT表示
                 canvasCtx.save();
                 canvasCtx.translate(kX, kY);
                 if (isUserMode) {
