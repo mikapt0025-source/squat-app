@@ -87,6 +87,25 @@
             box-shadow: 0 2px 8px rgba(0,0,0,0.4);
         }
 
+        /* リセットボタンのスタイル */
+        .reset-btn {
+            position: absolute;
+            top: calc(env(safe-area-inset-top, 16px) + 48px);
+            right: 16px;
+            z-index: 20;
+            background: rgba(211, 47, 47, 0.75);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            color: #fff;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: bold;
+            border: 1px solid rgba(255, 255, 255, 0.35);
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+        }
+
         .bottom-panel {
             position: absolute;
             bottom: 0;
@@ -368,6 +387,7 @@
 <div class="header-badge">🏋️ スクワットチャレンジ</div>
 <div class="score-badge" id="score-badge">⭐ 平均スコア: -- 点</div>
 <button class="switch-btn" id="switch-btn" onclick="toggleCamera()">🔄 カメラ切替</button>
+<button class="reset-btn" id="reset-btn" onclick="manualReset()">↺ リセット</button>
 
 <div id="canvas-container">
     <video id="video" playsinline muted autoplay></video>
@@ -379,7 +399,6 @@
     <div class="status" id="status">開始準備完了</div>
 </div>
 
-<!-- 1. スタート画面 -->
 <div id="start-modal" class="modal-overlay">
     <div class="modal-card" style="max-width: 380px;">
         <div style="font-size: 48px; margin-bottom: 8px;">🏋️</div>
@@ -391,7 +410,6 @@
     </div>
 </div>
 
-<!-- スタート画面用ランキングモーダル -->
 <div id="start-ranking-modal" class="modal-overlay" style="display: none;">
     <div class="modal-card" style="max-width: 400px;">
         <div style="font-size: 40px; margin-bottom: 4px;">🏆</div>
@@ -402,7 +420,6 @@
     </div>
 </div>
 
-<!-- 2. 結果画面 -->
 <div id="complete-modal" class="modal-overlay" style="display: none;">
     <div class="modal-card">
         <div class="complete-badge">🎉</div>
@@ -604,6 +621,12 @@
             window.speechSynthesis.getVoices();
         }
     };
+
+    function manualReset() {
+        if (confirm("現在のカウントとスコアをリセットしますか？")) {
+            resetSession();
+        }
+    }
 
     function openStartRankingModal() {
         startRankingModal.style.display = 'flex';
