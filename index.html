@@ -87,7 +87,6 @@
             box-shadow: 0 2px 8px rgba(0,0,0,0.4);
         }
 
-        /* リセットボタンのスタイル */
         .reset-btn {
             position: absolute;
             top: calc(env(safe-area-inset-top, 16px) + 48px);
@@ -480,11 +479,12 @@
     let isSaved = false;
     let currentUserName = "";
     let lastProcessTime = 0;
-    let playedGreatVoiceInCurrentRep = false;
+    let animFrameId = null;
 
     let repScores = [];
     let currentRepMinDiff = 999;
     let currentRepMinKneeAngle = 180;
+    let wasGreatFormInCurrentRep = false;
 
     let audioCtx = null;
     function initAudio() {
@@ -676,7 +676,7 @@
         stage = "up";
         downConfirmationFrames = 0;
         hasFormViolation = false;
-        playedGreatVoiceInCurrentRep = false;
+        wasGreatFormInCurrentRep = false;
         repScores = [];
         currentRepMinDiff = 999;
         currentRepMinKneeAngle = 180;
@@ -691,6 +691,7 @@
         if (isSaved) return;
         isSaved = true;
         isCompleted = true;
+        cameraRunning = false;
 
         playFanfareSound();
 
@@ -871,7 +872,7 @@
         }
         canvasCtx.drawImage(results.image, 0, 0, cWidth, cHeight);
 
-        if (count < TARGET_COUNT && startModal.style.display === "none") {
+        if (count < TARGET_COUNT && startModal.style.display === "none" && !isCompleted) {
             statusElement.innerText = `${currentUserName}さん: 全身を映してスクワットしてください`;
         }
 
@@ -930,7 +931,7 @@
                     hasFormViolation = true;
                     stage = "up";
                     downConfirmationFrames = 0;
-                    playedGreatVoiceInCurrentRep = false;
+                    wasGreatFormInCurrentRep = false;
                     if (count < TARGET_COUNT) {
                         statusElement.innerText = "⚠️ 膝がつま先より前に出ています！（ノーカウント）";
                         statusElement.style.color = "#ff5252";
@@ -942,13 +943,8 @@
                     if (downConfirmationFrames >= 2) {
                         stage = "down";
                         if (count < TARGET_COUNT) {
-                            if (isParallelOK) {
-                                statusElement.innerText = "✨ GREAT!! 完璧なフォームです！そのまま立ち上がりましょう";
-                                statusElement.style.color = "#00ff00";
-                            } else {
-                                statusElement.innerText = `👍 GOOD！そのまま立ち上がりましょう（平行差: ${Math.round(parallelDiff)}°）`;
-                                statusElement.style.color = "#ff9800";
-                            }
+                            statusElement.innerText = "そのまま立ち上がりましょう！";
+                            statusElement.style.color = "#00ff00";
                         }
                     }
                 } else if (currentAngle > SQUAT_DOWN_THRESHOLD && currentAngle < SQUAT_UP_THRESHOLD) {
@@ -956,6 +952,10 @@
                     if (!hasFormViolation && count < TARGET_COUNT) {
                         statusElement.style.color = "#eee";
                     }
+                }
+
+                if (currentAngle <= SQUAT_DOWN_THRESHOLD && isParallelOK && !isKneePastToe && !hasFormViolation) {
+                    wasGreatFormInCurrentRep = true;
                 }
 
                 if (stage === "down" || currentAngle <= SQUAT_DOWN_THRESHOLD) {
@@ -985,7 +985,15 @@
                         scoreBadge.innerText = `⭐ 最新: ${repScore}点 / 平均: ${avgScore}点`;
 
                         if (count < TARGET_COUNT) {
-                            playSuccessSound();
+                            if (wasGreatFormInCurrentRep) {
+                                playGreatVoice();
+                                statusElement.innerText = "✨ GREAT!! 完璧な姿勢でした！";
+                                statusElement.style.color = "#00ff00";
+                            } else {
+                                playSuccessSound();
+                                statusElement.innerText = "👍 GOOD! 次の回へいきましょう";
+                                statusElement.style.color = "#ff9800";
+                            }
                         } else {
                             handleAutoCompletion();
                         }
@@ -994,31 +1002,16 @@
                     stage = "up";
                     hasFormViolation = false;
                     downConfirmationFrames = 0;
-                    playedGreatVoiceInCurrentRep = false;
+                    wasGreatFormInCurrentRep = false;
                     currentRepMinDiff = 999;
                     currentRepMinKneeAngle = 180;
-
-                    if (count < TARGET_COUNT) {
-                        statusElement.innerText = `${currentUserName}さん: 全身を映してスクワットしてください`;
-                        statusElement.style.color = "#eee";
-                    }
                 }
 
                 let lineColor = '#FFFF00'; 
-                let isGreatCondition = false;
-
                 if (isKneePastToe || hasFormViolation) {
                     lineColor = '#FF0000';
                 } else if (currentAngle <= SQUAT_DOWN_THRESHOLD) {
                     lineColor = '#00FF00';
-                    if (isParallelOK) {
-                        isGreatCondition = true;
-                    }
-                }
-
-                if (isGreatCondition && !playedGreatVoiceInCurrentRep) {
-                    playedGreatVoiceInCurrentRep = true;
-                    playGreatVoice();
                 }
 
                 canvasCtx.beginPath();
@@ -1056,15 +1049,6 @@
                     canvasCtx.scale(-1, 1);
                 }
 
-                if (isGreatCondition) {
-                    canvasCtx.font = "900 " + Math.max(26, Math.round(cWidth / 22)) + "px sans-serif";
-                    canvasCtx.fillStyle = "#00FF00";
-                    canvasCtx.strokeStyle = "#000000";
-                    canvasCtx.lineWidth = 6;
-                    canvasCtx.strokeText("✨ GREAT!", -60, -50);
-                    canvasCtx.fillText("✨ GREAT!", -60, -50);
-                }
-
                 canvasCtx.font = "bold " + Math.max(18, Math.round(cWidth / 28)) + "px sans-serif";
                 canvasCtx.fillStyle = lineColor;
                 canvasCtx.strokeStyle = "#000000";
@@ -1095,12 +1079,17 @@
                 isProcessing = false;
             }
         }
-        requestAnimationFrame(processFrame);
+        animFrameId = requestAnimationFrame(processFrame);
     }
 
     async function startCamera() {
         statusElement.innerText = "カメラを起動中...";
         switchBtn.disabled = true;
+
+        if (animFrameId) {
+            cancelAnimationFrame(animFrameId);
+            animFrameId = null;
+        }
 
         cameraRunning = false;
         if (currentStream) {
@@ -1109,32 +1098,39 @@
         }
         videoElement.srcObject = null;
 
+        videoElement.setAttribute('playsinline', 'true');
+        videoElement.muted = true;
+
         try {
-            const constraints = {
-                audio: false,
-                video: {
-                    facingMode: facingMode,
-                    width: { ideal: 640 },
-                    height: { ideal: 480 }
-                }
-            };
+            let stream = null;
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({
+                    audio: false,
+                    video: {
+                        facingMode: facingMode,
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
+                    }
+                });
+            } catch (e) {
+                console.warn("優先設定での起動に失敗。汎用設定で再試行します:", e);
+                stream = await navigator.mediaDevices.getUserMedia({
+                    audio: false,
+                    video: true
+                });
+            }
 
-            currentStream = await navigator.mediaDevices.getUserMedia(constraints);
-            videoElement.srcObject = currentStream;
+            currentStream = stream;
+            videoElement.srcObject = stream;
 
-            await new Promise((resolve) => {
-                videoElement.onloadedmetadata = () => {
-                    videoElement.play();
-                    resolve();
-                };
-            });
+            await videoElement.play();
 
             cameraRunning = true;
-            requestAnimationFrame(processFrame);
+            animFrameId = requestAnimationFrame(processFrame);
             statusElement.innerText = `${currentUserName}さん: 全身を映してスクワットしてください`;
 
         } catch (err) {
-            console.error(err);
+            console.error("カメラエラー詳細:", err);
             statusElement.innerText = "⚠️ カメラ起動エラー: " + err.message;
             statusElement.style.color = "#ff5252";
         } finally {
